@@ -44,16 +44,16 @@ textarea:focus{border-color:rgba(255,255,255,0.22)}
 #ptext{line-height:1.78;white-space:pre-wrap;word-break:break-word}
 #tapzone{position:absolute;inset:0;bottom:90px;z-index:10}
 #taphint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.18);font-size:14px;pointer-events:none;letter-spacing:.04em;transition:opacity .4s}
-.pctrl{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(0,0,0,0.9);padding:10px 14px calc(18px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:9px}
-.pbtn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
+.pctrl{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(0,0,0,0.9);padding:14px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px}
+.pbtn{width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
 .pbtn:active{transform:scale(.92)}
 .pbtn.pr{background:#fff}
 .pbtn.pr svg{color:#000}
-.pbtn.se{background:rgba(255,255,255,0.1)}
+.pbtn.se{background:rgba(255,255,255,0.15)}
 .pbtn.se svg{color:#fff}
-.pbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#pspeed{flex:1;accent-color:#fff}
-#pspeedval{font-size:13px;color:rgba(255,255,255,0.45);min-width:18px;text-align:center}
+.pbtn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#pspeed{flex:1;accent-color:#fff;height:6px}
+#pspeedval{font-size:14px;color:rgba(255,255,255,0.45);min-width:18px;text-align:center}
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);color:#fff;font-size:13px;padding:8px 18px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:300;white-space:nowrap}
 .toast.show{opacity:1}
 </style>
