@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Teleprompter</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#0a0a0a;color:#f0f0f0;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;background:#0a0a0a}
+.hdr{padding:14px 18px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:0.5px solid rgba(255,255,255,0.09);flex-shrink:0}
+.hdr-title{font-size:16px;font-weight:600;color:#f0f0f0;letter-spacing:-0.2px}
+.hdr-sub{font-size:12px;color:#444}
+.body{flex:1;overflow-y:auto;padding:16px 18px}
+textarea{width:100%;height:190px;background:#141414;color:#e8e8e8;border:0.5px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px;font-size:15px;line-height:1.6;resize:none;outline:none;font-family:inherit}
+textarea:focus{border-color:rgba(255,255,255,0.22)}
+.char-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.chars{font-size:12px;color:#444}
+.saved-ind{font-size:12px;color:#4ade80;opacity:0;transition:opacity .35s}
+.saved-ind.show{opacity:1}
+.slabel{font-size:11px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.08em;margin:18px 0 10px}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.row label{font-size:12px;color:#555;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.05em}
+.row input[type=range]{flex:1;accent-color:#fff}
+.row .val{font-size:13px;font-weight:500;color:#e0e0e0;min-width:36px;text-align:right}
+.swatches{display:flex;gap:8px;margin-bottom:14px;align-items:center}
+.swatches label{font-size:12px;color:#555;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:0.05em}
+.sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .15s}
+.sw.sel{border-color:rgba(255,255,255,0.75);transform:scale(1.15)}
+.modes{display:flex;gap:8px;margin-bottom:4px}
+.mbtn{flex:1;padding:9px 0;border-radius:9px;border:0.5px solid rgba(255,255,255,0.1);background:transparent;color:#555;font-size:13px;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.mbtn.sel{background:rgba(255,255,255,0.07);color:#e0e0e0;border-color:rgba(255,255,255,0.22)}
+.actions{display:flex;gap:8px;padding:12px 18px calc(16px + env(safe-area-inset-bottom,0px));flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.07)}
+.save-btn{flex:1;padding:13px;background:#1a1a1a;color:#e0e0e0;border:0.5px solid rgba(255,255,255,0.15);border-radius:12px;font-size:14px;font-weight:500;cursor:pointer;transition:background .15s}
+.save-btn:hover{background:#222}
+.start-btn{flex:2;padding:13px;background:#fff;color:#000;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s,transform .1s}
+.start-btn:active{opacity:.85;transform:scale(.98)}
+.start-btn:disabled{opacity:.25;cursor:default;transform:none}
+
+/* PROMPTER */
+#prompter{display:none;position:fixed;inset:0;background:#000;z-index:100;overflow:hidden}
+#prog{position:fixed;top:0;left:0;height:3px;background:rgba(255,255,255,0.4);z-index:200;width:0%}
+#track{position:absolute;top:0;left:0;width:100%;padding:56px 22px 80vh;will-change:transform}
+#ptext{line-height:1.78;white-space:pre-wrap;word-break:break-word}
+#tapzone{position:absolute;inset:0;bottom:90px;z-index:10}
+#taphint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.18);font-size:14px;pointer-events:none;letter-spacing:.04em;transition:opacity .4s}
+.pctrl{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(0,0,0,0.9);padding:10px 14px calc(18px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:9px}
+.pbtn{width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
+.pbtn:active{transform:scale(.92)}
+.pbtn.pr{background:#fff}
+.pbtn.pr svg{color:#000}
+.pbtn.se{background:rgba(255,255,255,0.1)}
+.pbtn.se svg{color:#fff}
+.pbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#pspeed{flex:1;accent-color:#fff}
+#pspeedval{font-size:13px;color:rgba(255,255,255,0.45);min-width:18px;text-align:center}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);color:#fff;font-size:13px;padding:8px 18px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:300;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="hdr">
+    <span class="hdr-title">Teleprompter</span>
+    <span class="hdr-sub" id="hdr-sub">No saved speech</span>
+  </div>
+  <div class="body">
+    <div class="slabel">Speech text</div>
+    <textarea id="txt" placeholder="Paste your speech here…"></textarea>
+    <div class="char-row">
+      <span class="chars" id="chars">0 characters</span>
+      <span class="saved-ind" id="saved-ind">Saved ✓</span>
+    </div>
+
+    <div class="slabel" style="margin-top:20px">Display</div>
+    <div class="row">
+      <label>Font</label>
+      <input type="range" id="fsize" min="20" max="60" value="34" step="1" oninput="document.getElementById('fsval').textContent=this.value+'px'"/>
+      <span class="val" id="fsval">34px</span>
+    </div>
+    <div class="swatches">
+      <label>Color</label>
+      <div class="sw sel" style="background:#fff" data-c="#fff" onclick="selColor(this)"></div>
+      <div class="sw" style="background:#facc15" data-c="#facc15" onclick="selColor(this)"></div>
+      <div class="sw" style="background:#4ade80" data-c="#4ade80" onclick="selColor(this)"></div>
+      <div class="sw" style="background:#60a5fa" data-c="#60a5fa" onclick="selColor(this)"></div>
+    </div>
+
+    <div class="slabel">Scroll</div>
+    <div class="row">
+      <label>Speed</label>
+      <input type="range" id="ispeed" min="1" max="10" value="4" step="1" oninput="document.getElementById('isval').textContent=this.value"/>
+      <span class="val" id="isval">4</span>
+    </div>
+    <div class="slabel" style="margin-top:10px">Mode</div>
+    <div class="modes">
+      <button class="mbtn sel" id="m-auto" onclick="setMode('auto')">▶ Auto-scroll</button>
+      <button class="mbtn" id="m-tap" onclick="setMode('manual')">☝ Tap to advance</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="save-btn" onclick="saveText()">💾 Save</button>
+    <button class="start-btn" id="startbtn" onclick="startPrompter()" disabled>
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      Start
+    </button>
+  </div>
+</div>
+
+<div id="prompter">
+  <div id="prog"></div>
+  <div id="track"><div id="ptext"></div></div>
+  <div id="tapzone"></div>
+  <div id="taphint">Tap to advance</div>
+  <div class="pctrl">
+    <button class="pbtn se" onclick="rewind()" aria-label="Restart">
+      <svg viewBox="0 0 24 24"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 .49-3.95"/></svg>
+    </button>
+    <button class="pbtn pr" id="ppbtn" onclick="togglePlay()" aria-label="Play/pause">
+      <svg id="ppicon" viewBox="0 0 24 24"><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
+    </button>
+    <input type="range" id="pspeed" min="1" max="10" value="4" step="1" oninput="chSpeed(this.value)"/>
+    <span id="pspeedval">4</span>
+    <button class="pbtn se" onclick="stopPrompter()" aria-label="Exit">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='teleprompter-speech';
+let scrollY=0,playing=false,raf=null,speed=4,color='#fff',mode='auto',hintTimer,saveTimer,wl=null;
+
+// Load saved speech on open
+(function(){
+  try{
+    const v=localStorage.getItem(KEY);
+    if(v){
+      document.getElementById('txt').value=v;
+      updateChars();
+      document.getElementById('hdr-sub').textContent='Speech ready';
+    }
+  }catch(e){}
+})();
+
+document.getElementById('txt').addEventListener('input',()=>{
+  updateChars();
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(autoSave,1500);
+});
+
+function updateChars(){
+  const v=document.getElementById('txt').value;
+  document.getElementById('chars').textContent=v.length.toLocaleString()+' characters';
+  document.getElementById('startbtn').disabled=!v.trim();
+}
+
+function autoSave(){
+  const v=document.getElementById('txt').value;
+  try{
+    localStorage.setItem(KEY,v);
+    const ind=document.getElementById('saved-ind');
+    ind.classList.add('show');
+    setTimeout(()=>ind.classList.remove('show'),2000);
+    document.getElementById('hdr-sub').textContent=v.trim()?'Speech ready':'No saved speech';
+  }catch(e){}
+}
+
+function saveText(){
+  const v=document.getElementById('txt').value;
+  try{
+    localStorage.setItem(KEY,v);
+    showToast('Speech saved ✓');
+    document.getElementById('hdr-sub').textContent=v.trim()?'Speech ready':'No saved speech';
+  }catch(e){showToast('Could not save');}
+}
+
+function selColor(el){
+  document.querySelectorAll('.sw').forEach(s=>s.classList.remove('sel'));
+  el.classList.add('sel');color=el.dataset.c;
+}
+function setMode(m){
+  mode=m;
+  document.getElementById('m-auto').classList.toggle('sel',m==='auto');
+  document.getElementById('m-tap').classList.toggle('sel',m==='manual');
+}
+
+function startPrompter(){
+  const txt=document.getElementById('txt').value.trim();
+  if(!txt)return;
+  const fs=parseInt(document.getElementById('fsize').value);
+  speed=parseInt(document.getElementById('ispeed').value);
+  document.getElementById('pspeed').value=speed;
+  document.getElementById('pspeedval').textContent=speed;
+  const pt=document.getElementById('ptext');
+  pt.textContent=txt;pt.style.fontSize=fs+'px';pt.style.color=color;
+  scrollY=0;
+  document.getElementById('track').style.transform='translateY(0)';
+  document.getElementById('prog').style.width='0%';
+  document.getElementById('prompter').style.display='block';
+  document.getElementById('app').style.display='none';
+  if(mode==='manual'){
+    playing=false;setIcon(false);showHint(true);
+    document.getElementById('tapzone').addEventListener('click',tapAdv);
+  }else{
+    playing=true;setIcon(true);
+    document.getElementById('taphint').style.opacity='0';
+    document.getElementById('tapzone').removeEventListener('click',tapAdv);
+    animate();
+  }
+  requestWake();
+}
+
+function animate(){
+  if(!playing)return;
+  scrollY+=speed*0.55;
+  const track=document.getElementById('track');
+  const max=track.scrollHeight-window.innerHeight*0.25;
+  if(scrollY>=max){scrollY=max;playing=false;setIcon(false);}
+  track.style.transform='translateY(-'+Math.round(scrollY)+'px)';
+  document.getElementById('prog').style.width=Math.min(100,Math.round((scrollY/max)*100))+'%';
+  raf=requestAnimationFrame(animate);
+}
+function togglePlay(){
+  if(mode==='manual'){
+    mode='auto';
+    document.getElementById('tapzone').removeEventListener('click',tapAdv);
+    document.getElementById('taphint').style.opacity='0';
+    playing=true;setIcon(true);animate();
+  }else{playing=!playing;setIcon(playing);if(playing)animate();}
+}
+function chSpeed(v){speed=parseInt(v);document.getElementById('pspeedval').textContent=v;}
+function rewind(){
+  scrollY=0;
+  document.getElementById('track').style.transform='translateY(0)';
+  document.getElementById('prog').style.width='0%';
+  if(mode==='auto'&&!playing){playing=true;setIcon(true);animate();}
+}
+function tapAdv(){
+  const track=document.getElementById('track');
+  const max=track.scrollHeight-window.innerHeight*0.25;
+  scrollY=Math.min(scrollY+window.innerHeight*0.45,max);
+  track.style.transform='translateY(-'+Math.round(scrollY)+'px)';
+  document.getElementById('prog').style.width=Math.min(100,Math.round((scrollY/max)*100))+'%';
+  const h=document.getElementById('taphint');
+  h.style.opacity='0.45';clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=>h.style.opacity='0.1',700);
+}
+function stopPrompter(){
+  playing=false;cancelAnimationFrame(raf);
+  document.getElementById('tapzone').removeEventListener('click',tapAdv);
+  document.getElementById('prompter').style.display='none';
+  document.getElementById('app').style.display='flex';
+  scrollY=0;
+}
+function setIcon(p){
+  document.getElementById('ppicon').innerHTML=p
+    ?'<line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/>'
+    :'<polygon points="5,3 19,12 5,21"/>';
+}
+function showHint(s){
+  const h=document.getElementById('taphint');
+  h.style.opacity=s?'1':'0';
+  if(s){clearTimeout(hintTimer);hintTimer=setTimeout(()=>h.style.opacity='0.15',2500);}
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+async function requestWake(){
+  if('wakeLock' in navigator){try{wl=await navigator.wakeLock.request('screen');}catch(e){}}
+}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='visible'&&wl!==null){
+    try{wl=await navigator.wakeLock.request('screen');}catch(e){}
+  }
+});
+</script>
+</body>
+</html>
