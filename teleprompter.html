@@ -40,21 +40,30 @@ textarea:focus{border-color:rgba(255,255,255,0.22)}
 /* PROMPTER */
 #prompter{display:none;position:fixed;inset:0;background:#000;z-index:100;overflow:hidden}
 #prog{position:fixed;top:0;left:0;height:3px;background:rgba(255,255,255,0.4);z-index:200;width:0%}
-#track{position:absolute;top:0;left:0;width:100%;padding:56px 22px 80vh;will-change:transform}
+#track{position:absolute;top:0;left:0;width:100%;padding:56px 22px 85vh;will-change:transform;touch-action:none}
 #ptext{line-height:1.78;white-space:pre-wrap;word-break:break-word}
-#tapzone{position:absolute;inset:0;bottom:90px;z-index:10}
-#taphint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.18);font-size:14px;pointer-events:none;letter-spacing:.04em;transition:opacity .4s}
-.pctrl{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(0,0,0,0.9);padding:14px 18px calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:14px}
-.pbtn{width:64px;height:64px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
+#dragzone{position:absolute;inset:0;bottom:170px;z-index:10;touch-action:none}
+#taphint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,0.18);font-size:14px;pointer-events:none;letter-spacing:.04em;transition:opacity .4s;text-align:center}
+
+.pctrl{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(0,0,0,0.92);padding:12px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.speed-row{display:flex;align-items:center;gap:10px}
+.speed-label{font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.06em;width:50px;flex-shrink:0}
+.sbtn{width:46px;height:46px;border-radius:14px;border:none;background:rgba(255,255,255,0.14);color:#fff;font-size:24px;font-weight:400;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s,background .15s}
+.sbtn:active{transform:scale(.9);background:rgba(255,255,255,0.25)}
+#pspeed{flex:1;accent-color:#fff;height:8px}
+#pspeedval{font-size:18px;font-weight:600;color:#fff;min-width:28px;text-align:center}
+
+.main-row{display:flex;align-items:center;justify-content:center;gap:18px}
+.pbtn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s}
 .pbtn:active{transform:scale(.92)}
-.pbtn.pr{background:#fff}
+.pbtn.pr{background:#fff;width:84px;height:84px}
 .pbtn.pr svg{color:#000}
 .pbtn.se{background:rgba(255,255,255,0.15)}
 .pbtn.se svg{color:#fff}
-.pbtn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-#pspeed{flex:1;accent-color:#fff;height:6px}
-#pspeedval{font-size:14px;color:rgba(255,255,255,0.45);min-width:18px;text-align:center}
-.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);color:#fff;font-size:13px;padding:8px 18px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:300;white-space:nowrap}
+.pbtn svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pbtn.pr svg{width:34px;height:34px}
+
+.toast{position:fixed;bottom:200px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.12);color:#fff;font-size:13px;padding:8px 18px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:300;white-space:nowrap}
 .toast.show{opacity:1}
 </style>
 </head>
@@ -93,11 +102,7 @@ textarea:focus{border-color:rgba(255,255,255,0.22)}
       <input type="range" id="ispeed" min="1" max="10" value="4" step="1" oninput="document.getElementById('isval').textContent=this.value"/>
       <span class="val" id="isval">4</span>
     </div>
-    <div class="slabel" style="margin-top:10px">Mode</div>
-    <div class="modes">
-      <button class="mbtn sel" id="m-auto" onclick="setMode('auto')">▶ Auto-scroll</button>
-      <button class="mbtn" id="m-tap" onclick="setMode('manual')">☝ Tap to advance</button>
-    </div>
+    <p style="font-size:12px;color:#444;line-height:1.5;margin-top:2px">During the speech, drag the text up/down to position it, and use the play button or speed +/− to control scrolling.</p>
   </div>
 
   <div class="actions">
@@ -112,27 +117,36 @@ textarea:focus{border-color:rgba(255,255,255,0.22)}
 <div id="prompter">
   <div id="prog"></div>
   <div id="track"><div id="ptext"></div></div>
-  <div id="tapzone"></div>
-  <div id="taphint">Tap to advance</div>
+  <div id="dragzone"></div>
+  <div id="taphint">Drag to position<br/>Tap ▶ to start</div>
   <div class="pctrl">
-    <button class="pbtn se" onclick="rewind()" aria-label="Restart">
-      <svg viewBox="0 0 24 24"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 .49-3.95"/></svg>
-    </button>
-    <button class="pbtn pr" id="ppbtn" onclick="togglePlay()" aria-label="Play/pause">
-      <svg id="ppicon" viewBox="0 0 24 24"><line x1="10" y1="15" x2="10" y2="9"/><line x1="14" y1="15" x2="14" y2="9"/></svg>
-    </button>
-    <input type="range" id="pspeed" min="1" max="10" value="4" step="1" oninput="chSpeed(this.value)"/>
-    <span id="pspeedval">4</span>
-    <button class="pbtn se" onclick="stopPrompter()" aria-label="Exit">
-      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+    <div class="speed-row">
+      <span class="speed-label">Speed</span>
+      <button class="sbtn" onclick="adjSpeed(-1)" aria-label="Slower">−</button>
+      <input type="range" id="pspeed" min="1" max="10" value="4" step="1" oninput="chSpeed(this.value)"/>
+      <span id="pspeedval">4</span>
+      <button class="sbtn" onclick="adjSpeed(1)" aria-label="Faster">+</button>
+    </div>
+    <div class="main-row">
+      <button class="pbtn se" onclick="rewind()" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 .49-3.95"/></svg>
+      </button>
+      <button class="pbtn pr" id="ppbtn" onclick="togglePlay()" aria-label="Play/pause">
+        <svg id="ppicon" viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+      </button>
+      <button class="pbtn se" onclick="stopPrompter()" aria-label="Exit">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script>
 const KEY='teleprompter-speech';
-let scrollY=0,playing=false,raf=null,speed=4,color='#fff',mode='auto',hintTimer,saveTimer,wl=null;
+let scrollY=0,playing=false,raf=null,speed=4,color='#fff',hintTimer,saveTimer,wl=null;
+let maxScroll=0;
+let dragging=false,dragStartY=0,dragStartScroll=0;
 
 // Load saved speech on open
 (function(){
@@ -182,11 +196,6 @@ function selColor(el){
   document.querySelectorAll('.sw').forEach(s=>s.classList.remove('sel'));
   el.classList.add('sel');color=el.dataset.c;
 }
-function setMode(m){
-  mode=m;
-  document.getElementById('m-auto').classList.toggle('sel',m==='auto');
-  document.getElementById('m-tap').classList.toggle('sel',m==='manual');
-}
 
 function startPrompter(){
   const txt=document.getElementById('txt').value.trim();
@@ -202,56 +211,60 @@ function startPrompter(){
   document.getElementById('prog').style.width='0%';
   document.getElementById('prompter').style.display='block';
   document.getElementById('app').style.display='none';
-  if(mode==='manual'){
-    playing=false;setIcon(false);showHint(true);
-    document.getElementById('tapzone').addEventListener('click',tapAdv);
-  }else{
-    playing=true;setIcon(true);
-    document.getElementById('taphint').style.opacity='0';
-    document.getElementById('tapzone').removeEventListener('click',tapAdv);
-    animate();
-  }
+
+  playing=false;setIcon(false);
+  showHint(true);
   requestWake();
+
+  // recalc max scroll after layout settles
+  setTimeout(()=>{
+    const track=document.getElementById('track');
+    maxScroll=Math.max(0,track.scrollHeight-window.innerHeight*0.25);
+  },50);
+}
+
+function recalcMax(){
+  const track=document.getElementById('track');
+  maxScroll=Math.max(0,track.scrollHeight-window.innerHeight*0.25);
+}
+
+function applyScroll(){
+  scrollY=Math.max(0,Math.min(scrollY,maxScroll));
+  document.getElementById('track').style.transform='translateY(-'+Math.round(scrollY)+'px)';
+  document.getElementById('prog').style.width=(maxScroll>0?Math.min(100,Math.round((scrollY/maxScroll)*100)):0)+'%';
 }
 
 function animate(){
   if(!playing)return;
+  recalcMax();
   scrollY+=speed*0.55;
-  const track=document.getElementById('track');
-  const max=track.scrollHeight-window.innerHeight*0.25;
-  if(scrollY>=max){scrollY=max;playing=false;setIcon(false);}
-  track.style.transform='translateY(-'+Math.round(scrollY)+'px)';
-  document.getElementById('prog').style.width=Math.min(100,Math.round((scrollY/max)*100))+'%';
+  if(scrollY>=maxScroll){scrollY=maxScroll;playing=false;setIcon(false);}
+  applyScroll();
   raf=requestAnimationFrame(animate);
 }
+
 function togglePlay(){
-  if(mode==='manual'){
-    mode='auto';
-    document.getElementById('tapzone').removeEventListener('click',tapAdv);
-    document.getElementById('taphint').style.opacity='0';
-    playing=true;setIcon(true);animate();
-  }else{playing=!playing;setIcon(playing);if(playing)animate();}
+  playing=!playing;
+  setIcon(playing);
+  hideHint();
+  if(playing){recalcMax();animate();}
+}
+
+function adjSpeed(delta){
+  speed=Math.max(1,Math.min(10,speed+delta));
+  document.getElementById('pspeed').value=speed;
+  document.getElementById('pspeedval').textContent=speed;
 }
 function chSpeed(v){speed=parseInt(v);document.getElementById('pspeedval').textContent=v;}
+
 function rewind(){
   scrollY=0;
-  document.getElementById('track').style.transform='translateY(0)';
-  document.getElementById('prog').style.width='0%';
-  if(mode==='auto'&&!playing){playing=true;setIcon(true);animate();}
+  applyScroll();
+  if(!playing){playing=true;setIcon(true);recalcMax();animate();}
 }
-function tapAdv(){
-  const track=document.getElementById('track');
-  const max=track.scrollHeight-window.innerHeight*0.25;
-  scrollY=Math.min(scrollY+window.innerHeight*0.45,max);
-  track.style.transform='translateY(-'+Math.round(scrollY)+'px)';
-  document.getElementById('prog').style.width=Math.min(100,Math.round((scrollY/max)*100))+'%';
-  const h=document.getElementById('taphint');
-  h.style.opacity='0.45';clearTimeout(hintTimer);
-  hintTimer=setTimeout(()=>h.style.opacity='0.1',700);
-}
+
 function stopPrompter(){
   playing=false;cancelAnimationFrame(raf);
-  document.getElementById('tapzone').removeEventListener('click',tapAdv);
   document.getElementById('prompter').style.display='none';
   document.getElementById('app').style.display='flex';
   scrollY=0;
@@ -264,8 +277,10 @@ function setIcon(p){
 function showHint(s){
   const h=document.getElementById('taphint');
   h.style.opacity=s?'1':'0';
-  if(s){clearTimeout(hintTimer);hintTimer=setTimeout(()=>h.style.opacity='0.15',2500);}
+  clearTimeout(hintTimer);
+  if(s)hintTimer=setTimeout(()=>h.style.opacity='0.15',3000);
 }
+function hideHint(){document.getElementById('taphint').style.opacity='0';}
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
@@ -279,6 +294,32 @@ document.addEventListener('visibilitychange',async()=>{
     try{wl=await navigator.wakeLock.request('screen');}catch(e){}
   }
 });
+
+// ── Drag to scroll freely ──
+const dragzone=document.getElementById('dragzone');
+function onDragStart(y){
+  dragging=true;
+  if(playing){playing=false;setIcon(false);cancelAnimationFrame(raf);}
+  recalcMax();
+  dragStartY=y;
+  dragStartScroll=scrollY;
+  hideHint();
+}
+function onDragMove(y){
+  if(!dragging)return;
+  const dy=dragStartY-y;
+  scrollY=dragStartScroll+dy;
+  applyScroll();
+}
+function onDragEnd(){dragging=false;}
+
+dragzone.addEventListener('touchstart',e=>{onDragStart(e.touches[0].clientY);},{passive:true});
+dragzone.addEventListener('touchmove',e=>{onDragMove(e.touches[0].clientY);},{passive:true});
+dragzone.addEventListener('touchend',onDragEnd);
+
+dragzone.addEventListener('mousedown',e=>{onDragStart(e.clientY);});
+window.addEventListener('mousemove',e=>{if(dragging)onDragMove(e.clientY);});
+window.addEventListener('mouseup',onDragEnd);
 </script>
 </body>
 </html>
